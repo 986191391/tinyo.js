@@ -2,6 +2,7 @@
   <div class="container">
     <canvas id="tinyoCanvas" ref="tinyoCanvas"></canvas>
     <aside>
+      <h2>更新时间: 2023-10-31</h2>
       <h2>画板设置</h2>
       <div class="action-container">
         <section class="action-items">
@@ -16,6 +17,21 @@
           <div class="action-items-value action-items-input-text">
             <el-input v-model="inputText" size="small" placeholder="文字描述" />
             <el-button type="primary" size="small" @click="uploadText">确定</el-button>
+          </div>
+        </section>
+        <section class="action-items">
+          <span class="action-items-label">插入矩形:</span>
+          <div class="action-items-value">
+            <el-input v-model="rectWidth" style="width: 60px" size="small" placeholder="矩形宽度" />
+            <el-input v-model="rectHeight" style="width: 60px" size="small" placeholder="矩形高度" />
+            <el-button type="primary" size="small" style="margin-left: 10px" @click="uploadRect">确定</el-button>
+          </div>
+        </section>
+        <section class="action-items">
+          <span class="action-items-label">插入圆形:</span>
+          <div class="action-items-value">
+            <el-input v-model="circleRadius" style="width: 60px" size="small" placeholder="半径" />
+            <el-button type="primary" size="small" style="margin-left: 10px" @click="uploadCircle">确定</el-button>
           </div>
         </section>
         <section class="action-items">
@@ -38,19 +54,28 @@
           </div>
         </section>
       </div>
-      <h2>画布元素</h2>
+      <!-- <section class="action-items">
+        <div class="action-container">
+          更新时间: 2023-10-31
+        </div>
+      </section> -->
     </aside>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import tinyo from './index';
+import { defineComponent, ref, reactive, onBeforeMount, onMounted, onUnmounted } from 'vue';
+import { PlusOutlined } from '@ant-design/icons-vue'
+import tc from './tc';
 import monkey from '@/assets/fabric/monkey.png'
 import cap from '@/assets/fabric/cap.png'
 
 const exm = ref(null);
 const inputText = ref('');
+const rectWidth = ref(100);
+const rectHeight = ref(50);
+const circleRadius = ref(100);
+
 const options = reactive({
   width: 0,
   height: 0,
@@ -59,7 +84,7 @@ const options = reactive({
 
 onMounted(() => {
   const { innerHeight, innerWidth } = window;
-  exm.value = new tinyo('tinyoCanvas', {
+  exm.value = new tc('tinyoCanvas', {
     width: innerWidth - 350,
     height: innerHeight,
     fill: '#000',
@@ -105,6 +130,20 @@ const uploadText = () => {
   ];
   exm.value.addText(texts);
   inputText.value = '';
+}
+
+const uploadRect = () => {
+  const rects = [
+    { rectColor: 'red', top: innerHeight / 2, left: (innerWidth - 350) / 2, width: rectWidth.value, height: rectHeight.value, evented: true, selectable: true },
+  ];
+  exm.value.addRect(rects);
+}
+
+const uploadCircle = () => {
+  const circles = [
+    { circleColor: 'pink', top: innerHeight / 2, left: (innerWidth - 350) / 2, radius: circleRadius.value, evented: true, selectable: true },
+  ];
+  exm.value.addCircle(circles)
 }
 
 const uploadImage = () => {

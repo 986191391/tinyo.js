@@ -12,6 +12,7 @@ export default class tinyoCanvas {
     this.canvasMousedown = this._watchCanvasMousedown.bind(this);
     this.canvasMousemove = this._watchCanvasMousemove.bind(this);
     this.canvasMouseup = this._watchCanvasMouseup.bind(this);
+    this.canvasContextmenu = this._watchCanvasContextmenu.bind(this);
 
     this._initActions();
     this.renderAll();
@@ -27,6 +28,7 @@ export default class tinyoCanvas {
 
   _initActions() {
     this.el.addEventListener('mousedown', this.canvasMousedown);
+    document.addEventListener('contextmenu', this.canvasContextmenu);
   }
 
   _setCanvasSize () {
@@ -99,45 +101,49 @@ export default class tinyoCanvas {
 
       switch (cssVal) {
         case 'n-resize': {
-          this.selectedElement.top = y;
-          this.selectedElement.height = coordY - y + height;
+          // this.selectedElement.top = y;
+          height > 20 && (this.selectedElement.top = y);
+          this.selectedElement.height = Math.max((coordY - y + height), 20);
           break;
         }
         case 's-resize': {
-          this.selectedElement.height = y - coordY + height;
+          this.selectedElement.height = Math.max((y - coordY + height), 20);
           break;
         }
         case 'w-resize': {
-          this.selectedElement.left = x;
-          this.selectedElement.width = coordX - x + width;
+          // this.selectedElement.left = x;
+          width > 20 && (this.selectedElement.left = x);
+          this.selectedElement.width = Math.max((coordX - x + width), 20);
           break;
         }
         case 'e-resize': {
-          this.selectedElement.width = x - coordX + width;
+          this.selectedElement.width = Math.max((x - coordX + width), 20);
           break;
         }
         case 'se-resize': {
-          this.selectedElement.width = x - coordX + width;
-          this.selectedElement.height = y - coordY + height;
+          this.selectedElement.width = Math.max((x - coordX + width), 20);
+          this.selectedElement.height = Math.max((y - coordY + height), 20);
           break;
         }
         case 'sw-resize': {
-          this.selectedElement.left = x;
-          this.selectedElement.width = coordX - x + width;
-          this.selectedElement.height = y - coordY + height;
+          // this.selectedElement.left = x;
+          width > 20 && (this.selectedElement.left = x);
+          this.selectedElement.width = Math.max((coordX - x + width), 20);
+          this.selectedElement.height = Math.max((y - coordY + height), 20);
           break;
         }
         case 'ne-resize': {
-          this.selectedElement.top = y;
-          this.selectedElement.width = x - coordX + width;
-          this.selectedElement.height = coordY - y + height;
+          // this.selectedElement.top = y;
+          height > 20 && (this.selectedElement.top = y);
+          this.selectedElement.width = Math.max((x - coordX + width), 20);
+          this.selectedElement.height = Math.max((coordY - y + height), 20);
           break;
         }
         case 'nw-resize': {
-          this.selectedElement.left = x;
-          this.selectedElement.top = y;
-          this.selectedElement.width = coordX - x + width;
-          this.selectedElement.height = coordY - y + height;
+          width > 20 && (this.selectedElement.left = x);
+          height > 20 && (this.selectedElement.top = y);
+          this.selectedElement.width = Math.max((coordX - x + width), 20);
+          this.selectedElement.height = Math.max((coordY - y + height), 20);
           break;
         }
         default:
@@ -162,27 +168,37 @@ export default class tinyoCanvas {
     this.elMoveLock = false;
     this.resizeLock = false;
     this.relativeCoord = null;
-    
     this.el.removeEventListener('mouseup', this.canvasMouseup);
   }
 
+  _watchCanvasContextmenu (e) {
+    e.preventDefault();
+  }
+
   _drawEvents () {
-    // 如果没有events则什么都不做
     if (!this.events.length) return;
-    // 否则循环，按照顺序渲染。顺序很重要，有图层优先级的问题。
+    // 按顺序渲染。顺序很重要，有图层优先级的问题。
 
     for (let i = 0; i < this.events.length; i++) {
       switch (this.events[i].type) {
-        case 'image':
-          this.ctx.drawImage(this.events[i].source, this.events[i].left, this.events[i].top, this.events[i].width, this.events[i].height);
+        case 'image': {
+          const { source, left, top, width, height } = this.events[i];
+          this.ctx.drawImage(source, left, top, width, height);
           break;
+        }
         case 'text': {
-          const { height } = this.events[i];
-          const { fontColor, fontStyle, fontVariant, fontWeight, fontSize, fontFamily } = this.events[i].attribute;
+          const { attribute, label, left, top, height } = this.events[i];
+          const { fontColor, fontStyle, fontVariant, fontWeight, fontSize, fontFamily } = attribute;
           this.ctx.fillStyle = fontColor || this.options.fill;
           this.ctx.textBaseline = 'bottom';
           this.ctx.font = `${fontStyle || 'normal'} ${fontVariant || 'small-caps'} ${fontWeight || 400} ${fontSize || 12}px ${fontFamily || 'sans-serif'}`;
-          this.ctx.fillText(this.events[i].label, this.events[i].left, this.events[i].top + height);
+          this.ctx.fillText(label, left, top + height);
+          break;
+        }
+        case 'rect': {
+          const { left, top, width, height, rectColor } = this.events[i];
+          this.ctx.fillStyle = rectColor || '#000';
+          this.ctx.fillRect(left, top, width, height);
           break;
         }
         default:
@@ -236,7 +252,6 @@ export default class tinyoCanvas {
     return;
   }
 
-
   addText (texts) {
     // 文字的属性： https://www.w3school.com.cn/tags/canvas_font.asp
     for (let i = 0; i < texts.length; i++) {
@@ -261,6 +276,44 @@ export default class tinyoCanvas {
       this.ctx.drawImage(imgs[i].source, imgs[i].left, imgs[i].top, width, height);
     }
     if (imgsLen === 1) this._drawHighlightLine(this.events[this.events.length - 1]);
+  }
+
+  addRect (rects) {
+    const rectsLen = rects.length;
+    console.log('rects', rects);
+    for (let i = 0; i < rectsLen; i++) {
+      const { left, top, width, height, rectColor } = rects[i];
+      this.events.push({ ...rects[i], type: 'rect', width, height });
+      this.ctx.fillStyle = rectColor || '#000';
+      this.ctx.fillRect(left, top, width, height);
+    }
+  }
+
+  addCircle (circles) {
+    const circlesLen = circles.length;
+    const tasks = [];
+    for (let i = 0; i < circlesLen; i++) {
+      const { left, top, radius, circleColor } = circles[i];
+      const imgElement = new Image();
+      const html = window.btoa(`<svg xmlns='http://www.w3.org/2000/svg' height='${radius * 2}' width='${radius * 2}'>
+        <circle cx='${radius}' cy='${radius}' r='${radius - 1}' fill='transparent' stroke='${circleColor || "#000"}' stroke-width='1' ></circle>
+      </svg>`);
+      imgElement.src = 'data:image/svg+xml;base64,' + html;
+
+      tasks.push(new Promise((resolve) => {
+        imgElement.onload = () => {
+          console.log('onload', imgElement)
+          resolve({
+            source: imgElement,
+            left,
+            top,
+            evented: true,
+            selectable: true
+          });
+        }
+      }));
+    }
+    Promise.all(tasks).then(svgs => this.addImage(svgs));
   }
 
   setBgValue (bgColor) {
@@ -294,9 +347,9 @@ export default class tinyoCanvas {
   // 对外暴露销毁事件
   beforeUnmountCanvas () {
     this.el.removeEventListener('mousedown', this.canvasMousedown);
+    document.removeEventListener('contextmenu', this.canvasContextmenu);
   }
 }
-
 
 // 选中元素的八个缩放点坐标
 function getElScalePoints (el) {
